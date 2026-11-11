@@ -3,7 +3,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 import pino from 'pino';
 import pinoHttp from 'pino-http';
+import crypto from 'crypto';
 import { getEnv } from './config/env';
+import { isDatabaseHealthy } from './infrastructure/database';
+import { isRedisHealthy } from './infrastructure/redis';
+import { verifyServiceAssertion } from './security/verifyServiceAssertion';
 
 const env = getEnv();
 const logger = pino({ level: env.LOG_LEVEL });
@@ -33,16 +37,36 @@ app.use(
   })
 );
 
-// Liveness & Readiness Probes
+// Liveness Probe (Does not touch external dependencies)
 app.get('/health/liveness', (_req: Request, res: Response) => {
   res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
 });
 
+// Readiness Probe (Pings database & Redis)
 app.get('/health/readiness', async (_req: Request, res: Response) => {
-  // Readiness validates DB connection and dependencies
-  res.status(200).json({
-    status: 'READY',
+  const dbOk = await isDatabaseHealthy();
+  const redisOk = await isRedisHealthy();
+
+  const isReady = dbOk && redisOk;
+  const statusCode = isReady ? 200 : 503;
+
+  res.status(statusCode).json({
+    status: isReady ? 'READY' : 'DEGRADED',
     service: 'collegeshub-ai-service',
+    checks: {
+      database: dbOk ? 'HEALTHY' : 'UNREACHABLE',
+      redis: redisOk ? 'HEALTHY' : 'UNREACHABLE',
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Internal Verified Ping Endpoint (Validates S2S Assertion Pipeline)
+app.get('/internal/v1/ping', verifyServiceAssertion, (req: Request, res: Response) => {
+  res.status(200).json({
+    success: true,
+    message: 'Internal S2S assertion verified successfully',
+    tenantContext: req.tenantContext,
     timestamp: new Date().toISOString(),
   });
 });
@@ -65,4 +89,3 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 export default app;
-
