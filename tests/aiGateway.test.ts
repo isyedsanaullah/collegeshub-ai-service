@@ -124,6 +124,19 @@ describe('Phase 4: AI Gateway, Providers & Metering Tests', () => {
     });
 
     it('resolves routes for canonical platform features', async () => {
+      const rawSecret = 'test-gemini-key';
+      const encrypted = CredentialVault.encrypt(rawSecret);
+      const [, iv, authTag, encryptedKey] = encrypted.split(':');
+
+      mockPrisma.providerCredential.findFirst.mockResolvedValue({
+        provider: 'gemini',
+        keyVersion: 1,
+        iv,
+        authTag,
+        encryptedKey,
+        isActive: true,
+      });
+
       const chatRoute = await modelRouter.resolveRoute('ai-chat');
       expect(chatRoute.modelKey).toBe('gemini-2.0-flash');
       expect(chatRoute.provider).toBe('gemini');

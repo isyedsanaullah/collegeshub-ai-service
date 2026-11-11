@@ -58,7 +58,7 @@ export class ModelRouter {
 
   /**
    * Retrieve the active decrypted API key for a provider.
-   * Checks database credentials first; falls back to environment variables.
+   * Fetches exclusively from the database (configured via Super Admin UI).
    */
   public async getApiKey(provider: 'gemini' | 'openai' | 'openrouter'): Promise<string> {
     try {
@@ -73,18 +73,13 @@ export class ModelRouter {
         return CredentialVault.decrypt(serialized);
       }
     } catch (err: any) {
-      logger.warn({ provider, err: err.message }, 'Failed to decrypt provider credential from database; using env fallback');
+      logger.error({ provider, err: err.message }, 'Failed to decrypt provider credential from database');
+      throw new Error(`Failed to decrypt credentials for AI provider '${provider}': ${err.message}`);
     }
 
-    // Environment fallback
-    switch (provider) {
-      case 'gemini':
-        return env.GEMINI_API_KEY || '';
-      case 'openai':
-        return env.OPENAI_API_KEY || '';
-      case 'openrouter':
-        return env.OPENROUTER_API_KEY || '';
-    }
+    throw new Error(
+      `No active API key found in database for AI provider '${provider}'. Please add it via the Super Admin portal under AI Credentials.`
+    );
   }
 
   /**

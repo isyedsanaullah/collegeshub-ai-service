@@ -32,11 +32,6 @@ const envSchema = z.object({
   R2_SECRET_ACCESS_KEY: z.string().optional(),
   R2_REGION: z.string().default('auto'),
 
-  // Fallback API Keys
-  GEMINI_API_KEY: z.string().optional(),
-  OPENROUTER_API_KEY: z.string().optional(),
-  OPENAI_API_KEY: z.string().optional(),
-
   // Global Caps
   GLOBAL_DAILY_BUDGET_USD: z.string().transform(Number).default('100'),
   GLOBAL_MONTHLY_BUDGET_USD: z.string().transform(Number).default('2500'),
