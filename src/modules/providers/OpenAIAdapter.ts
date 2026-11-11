@@ -83,3 +83,4 @@ export class OpenAIAdapter implements AIProviderAdapter {
     yield { text: '', done: true, usage: finalUsage };
   }
 }
+

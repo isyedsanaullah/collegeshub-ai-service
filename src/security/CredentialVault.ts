@@ -86,3 +86,4 @@ export class CredentialVault {
     return `••••••••••••${trimmed.slice(-4)}`;
   }
 }
+

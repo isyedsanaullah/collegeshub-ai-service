@@ -36,3 +36,4 @@ export interface AIProviderAdapter {
   generate(request: AIExecutionRequest, apiKey: string): Promise<AIExecutionResponse>;
   stream(request: AIExecutionRequest, apiKey: string): AsyncIterable<AIStreamChunk>;
 }
+

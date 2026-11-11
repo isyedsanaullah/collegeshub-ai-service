@@ -181,3 +181,4 @@ describe('Phase 6: Document Intelligence & Academic RAG (pgvector) Tests', () =>
     });
   });
 });
+

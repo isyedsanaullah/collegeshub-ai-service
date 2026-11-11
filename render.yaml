@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: collegeshub-ai-service
+    env: node
+    plan: standard
+    region: oregon
+    buildCommand: npm ci && npx prisma generate && npm run build
+    startCommand: node dist/server.js
+    healthCheckPath: /health/readiness
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10001
+      - key: AI_DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: INTERNAL_SERVICE_SECRET
+        sync: false
+      - key: MASTER_ENCRYPTION_KEY
+        sync: false
+      - key: INTERNAL_SERVICE_ISSUER
+        value: collegeshub-core
+      - key: INTERNAL_SERVICE_AUDIENCE
+        value: collegeshub-ai
+      - key: LOG_LEVEL
+        value: info
+
