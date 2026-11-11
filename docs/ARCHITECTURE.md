@@ -79,3 +79,4 @@ Every internal request carries:
 - `exp`: Max 60 seconds from issuance
 
 The AI service verifies signature and stores `jti` in Redis with TTL 60s. Any duplicate `jti` is rejected with `401 REPLAY_DETECTED`.
+

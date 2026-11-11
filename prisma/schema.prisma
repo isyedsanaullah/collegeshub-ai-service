@@ -274,3 +274,4 @@ model GlobalAISetting {
   updatedByUserId  String?
   updatedAt        DateTime @updatedAt
 }
+

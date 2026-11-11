@@ -97,3 +97,4 @@ This service is deployed independently as a Dockerized web service or Node.js we
 2. **Two-Phase Reserve & Settle:** Requests reserve maximum token cost before provider invocation. On completion, exact provider usage is settled and unused reserved credits are refunded.
 3. **FEFO Allocation:** Expiring monthly subscription credits are consumed before non-expiring purchased add-on credits.
 4. **Immutable Ledger:** Direct balance mutations are forbidden. Every balance shift requires an immutable `AICreditLedgerEntry`.
+

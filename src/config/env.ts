@@ -58,3 +58,4 @@ export function getEnv(): EnvConfig {
   }
   return parsedEnv;
 }
+
