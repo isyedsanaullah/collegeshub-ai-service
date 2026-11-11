@@ -12,6 +12,9 @@ import eventsRouter from './routes/events';
 import packagesRouter from './routes/packages';
 import chatRouter from './routes/chat';
 import ragRouter from './routes/rag';
+import walletRouter from './routes/wallet';
+import adminRouter from './routes/admin';
+import analyticsRouter from './routes/analytics';
 
 const env = getEnv();
 const logger = pino({ level: env.LOG_LEVEL });
@@ -75,11 +78,14 @@ app.get('/internal/v1/ping', verifyServiceAssertion, (req: Request, res: Respons
   });
 });
 
-// Internal Transactional Event, Package, Chat & RAG Routes
+// Internal Transactional Event, Package, Chat, RAG, Wallet, Admin & Analytics Routes
 app.use('/internal/v1/events', eventsRouter);
 app.use('/internal/v1/packages', packagesRouter);
 app.use('/internal/v1/chat', chatRouter);
 app.use('/internal/v1/rag', ragRouter);
+app.use('/internal/v1/wallet', walletRouter);
+app.use('/internal/v1/admin', adminRouter);
+app.use('/internal/v1/analytics', analyticsRouter);
 
 // Centralized Error Handler
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
