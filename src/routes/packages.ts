@@ -29,3 +29,4 @@ router.get('/', verifyServiceAssertion, async (_req: Request, res: Response): Pr
 });
 
 export default router;
+

@@ -10,6 +10,7 @@ import { isRedisHealthy } from './infrastructure/redis';
 import { verifyServiceAssertion } from './security/verifyServiceAssertion';
 import eventsRouter from './routes/events';
 import packagesRouter from './routes/packages';
+import chatRouter from './routes/chat';
 
 const env = getEnv();
 const logger = pino({ level: env.LOG_LEVEL });
@@ -73,9 +74,10 @@ app.get('/internal/v1/ping', verifyServiceAssertion, (req: Request, res: Respons
   });
 });
 
-// Internal Transactional Event & Package Routes
+// Internal Transactional Event, Package & Chat Routes
 app.use('/internal/v1/events', eventsRouter);
 app.use('/internal/v1/packages', packagesRouter);
+app.use('/internal/v1/chat', chatRouter);
 
 // Centralized Error Handler
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
