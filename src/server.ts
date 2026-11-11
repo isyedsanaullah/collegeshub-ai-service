@@ -8,6 +8,8 @@ import { getEnv } from './config/env';
 import { isDatabaseHealthy } from './infrastructure/database';
 import { isRedisHealthy } from './infrastructure/redis';
 import { verifyServiceAssertion } from './security/verifyServiceAssertion';
+import eventsRouter from './routes/events';
+import packagesRouter from './routes/packages';
 
 const env = getEnv();
 const logger = pino({ level: env.LOG_LEVEL });
@@ -70,6 +72,10 @@ app.get('/internal/v1/ping', verifyServiceAssertion, (req: Request, res: Respons
     timestamp: new Date().toISOString(),
   });
 });
+
+// Internal Transactional Event & Package Routes
+app.use('/internal/v1/events', eventsRouter);
+app.use('/internal/v1/packages', packagesRouter);
 
 // Centralized Error Handler
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {

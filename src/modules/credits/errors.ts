@@ -67,3 +67,4 @@ export class InvalidReservationStateError extends FinancialError {
     this.name = 'InvalidReservationStateError';
   }
 }
+
