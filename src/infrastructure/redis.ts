@@ -51,3 +51,4 @@ export async function isRedisHealthy(): Promise<boolean> {
     return false;
   }
 }
+

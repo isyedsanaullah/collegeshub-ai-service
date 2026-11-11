@@ -46,3 +46,4 @@ export async function isDatabaseHealthy(): Promise<boolean> {
     return false;
   }
 }
+
