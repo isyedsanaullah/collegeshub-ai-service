@@ -110,3 +110,4 @@ describe('PricingEngine Unit Tests', () => {
     expect(margin.grossMarginPercent).toBe(93.28);
   });
 });
+
