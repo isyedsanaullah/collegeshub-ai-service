@@ -50,6 +50,34 @@ export const CANONICAL_PACKAGES: PackageSeed[] = [
   },
 ];
 
+export const THREE_PLAN_PACKAGES: PackageSeed[] = [
+  {
+    code: 'AI_TOKENS_1M',
+    name: 'AI Lite Token Pack (1M Credits)',
+    description: '1,000,000 Haiku-equivalent AI compute credits (Standard).',
+    credits: 1_000_000n,
+    pricePkr: 500,
+    priceUsd: 1.7857,
+    validityDays: 0,
+    sortOrder: 1,
+  },
+  {
+    code: 'AI_TOKENS_5M',
+    name: 'AI Full Token Pack (5M Credits)',
+    description: '5,000,000 Haiku-equivalent AI compute credits (Premium).',
+    credits: 5_000_000n,
+    pricePkr: 1800,
+    priceUsd: 6.4286,
+    validityDays: 0,
+    sortOrder: 2,
+  },
+];
+
+export function getCanonicalPackages(threePlanOverride?: boolean): PackageSeed[] {
+  const threePlan = threePlanOverride ?? (process.env.THREE_PLAN_MODE === 'true');
+  return threePlan ? THREE_PLAN_PACKAGES : CANONICAL_PACKAGES;
+}
+
 export class PackageService {
   private prisma: PrismaClient;
 
@@ -60,10 +88,12 @@ export class PackageService {
   /**
    * Seed or synchronize canonical AI credit packages.
    */
-  public async seedDefaultPackages(): Promise<number> {
+  public async seedDefaultPackages(threePlanOverride?: boolean): Promise<number> {
+    const threePlan = threePlanOverride ?? (process.env.THREE_PLAN_MODE === 'true');
+    const packages = getCanonicalPackages(threePlan);
     let seededCount = 0;
 
-    for (const pkg of CANONICAL_PACKAGES) {
+    for (const pkg of packages) {
       await this.prisma.aIAddonPackage.upsert({
         where: { code: pkg.code },
         update: {
@@ -91,16 +121,24 @@ export class PackageService {
       seededCount++;
     }
 
-    logger.info({ seededCount }, 'Canonical AI credit packages seeded successfully');
+    if (threePlan) {
+      await this.prisma.aIAddonPackage.updateMany({
+        where: { code: 'AI_TOKENS_10M' },
+        data: { isActive: false },
+      });
+    }
+
+    logger.info({ seededCount, threePlan }, 'Canonical AI credit packages seeded successfully');
     return seededCount;
   }
 
   /**
    * List all active credit packages for college checkout.
    */
-  public async listActivePackages() {
+  public async listActivePackages(threePlanOverride?: boolean) {
+    const threePlan = threePlanOverride ?? (process.env.THREE_PLAN_MODE === 'true');
     return await this.prisma.aIAddonPackage.findMany({
-      where: { isActive: true },
+      where: threePlan ? { isActive: true, code: { not: 'AI_TOKENS_10M' } } : { isActive: true },
       orderBy: { sortOrder: 'asc' },
       select: {
         id: true,

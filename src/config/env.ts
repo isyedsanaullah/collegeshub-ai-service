@@ -32,6 +32,9 @@ const envSchema = z.object({
   R2_SECRET_ACCESS_KEY: z.string().optional(),
   R2_REGION: z.string().default('auto'),
 
+  // Feature flags
+  THREE_PLAN_MODE: z.string().transform((val) => val === 'true').default('false'),
+
   // Global Caps
   GLOBAL_DAILY_BUDGET_USD: z.string().transform(Number).default('100'),
   GLOBAL_MONTHLY_BUDGET_USD: z.string().transform(Number).default('2500'),
@@ -52,5 +55,9 @@ export function getEnv(): EnvConfig {
     parsedEnv = result.data;
   }
   return parsedEnv;
+}
+
+export function isThreePlanMode(): boolean {
+  return process.env.THREE_PLAN_MODE === 'true';
 }
 

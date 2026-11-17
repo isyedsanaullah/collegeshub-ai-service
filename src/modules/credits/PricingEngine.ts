@@ -7,9 +7,18 @@
  * USD cost before converting to integer micro-USD.
  */
 
+export type ModelWeightClass = 'lite' | 'standard' | 'advanced';
+
+export const HAIKU_TOKEN_WEIGHTS: Record<ModelWeightClass, number> = {
+  lite: 1,
+  standard: 20,
+  advanced: 40,
+};
+
 export interface ModelPricingRates {
   modelKey: string;
   version: number;
+  weightClass?: ModelWeightClass;
   inputPricePerMillionUsd: number;      // E.g., 0.075 for Gemini 2.0 Flash
   outputPricePerMillionUsd: number;     // E.g., 0.300 for Gemini 2.0 Flash
   cachedInputPricePerMillionUsd?: number;// E.g., 0.01875
@@ -30,17 +39,29 @@ export interface UsageMetrics {
 export interface PricingEngineOptions {
   commercialMarkupMultiplier?: number;  // Default: 1.0 (markup baked into package PKR retail price)
   minimumBillableCredits?: number;      // Default: 10 credits minimum per execution
+  threePlanMode?: boolean;              // Overrides process.env.THREE_PLAN_MODE for deterministic tests
 }
 
 export interface PricingCalculationResult {
   rawCostUsd: number;                   // Exact continuous floating-point cost in USD
   providerCostMicros: bigint;           // Integer micro-USD ($0.000001 USD per unit)
-  customerCreditsDebited: bigint;       // Final debited credits with markup and floor applied
+  customerCreditsDebited: bigint;       // Final debited credits with markup/weights and floor applied
   pricingVersion: number;
   modelKey: string;
+  weightClass?: ModelWeightClass;
+  tokenWeightMultiplier?: number;
 }
 
 export class PricingEngine {
+  public static resolveWeightClass(modelKey: string, explicit?: ModelWeightClass): ModelWeightClass {
+    if (explicit && HAIKU_TOKEN_WEIGHTS[explicit]) return explicit;
+    const key = String(modelKey || '').toLowerCase();
+    if (key.includes('opus') || key.includes('o1') || key.includes('o3')) return 'advanced';
+    if (key.includes('sonnet') || (key.includes('gpt-4o') && !key.includes('mini')) || key.includes('2.5-pro') || key.includes('1.5-pro')) {
+      return 'standard';
+    }
+    return 'lite';
+  }
   /**
    * Calculate exact provider compute cost and customer credit debit.
    */
@@ -89,17 +110,36 @@ export class PricingEngine {
     }
 
     // Convert exact USD cost to integer Micro-USD ($0.000001 USD)
-    // Round mathematically (0.5 rounds up)
+    // Round mathematically (0.5 rounds up) — always tracked internally for SuperAdmin margin analytics.
     const providerCostMicrosNum = Math.round(totalCostUsd * 1_000_000);
     const providerCostMicros = BigInt(providerCostMicrosNum);
 
-    // Compute Customer Credits with commercial markup
-    const markedUpCreditsNum = Math.ceil(providerCostMicrosNum * markup);
-    let customerCreditsDebited = BigInt(markedUpCreditsNum);
+    const threePlan = options.threePlanMode ?? (process.env.THREE_PLAN_MODE === 'true');
+    const weightClass = PricingEngine.resolveWeightClass(rates.modelKey, rates.weightClass);
+    const weightMultiplier = threePlan ? HAIKU_TOKEN_WEIGHTS[weightClass] : 1;
 
-    // Apply minimum billable credit floor
-    if (customerCreditsDebited < minCredits && totalCostUsd > 0) {
-      customerCreditsDebited = minCredits;
+    let customerCreditsDebited: bigint;
+    if (threePlan) {
+      // Three-Plan mode: decouple customer credits (Haiku-equivalent token weights 1x/20x/40x) from provider μUSD
+      const billableTokens =
+        Math.max(0, promptTokens) +
+        Math.max(0, completionTokens) +
+        Math.max(0, cachedTokens) +
+        Math.max(0, reasoningTokens) +
+        Math.max(0, embeddingTokens);
+      const imageEquivalentTokens = Math.max(0, imageUnits) * 1000;
+      const weightedCredits = Math.ceil((billableTokens + imageEquivalentTokens) * weightMultiplier * markup);
+      customerCreditsDebited = BigInt(weightedCredits);
+      if (customerCreditsDebited < minCredits && (billableTokens > 0 || imageUnits > 0)) {
+        customerCreditsDebited = minCredits;
+      }
+    } else {
+      // Legacy mode: 1 Credit = 1 μUSD
+      const markedUpCreditsNum = Math.ceil(providerCostMicrosNum * markup);
+      customerCreditsDebited = BigInt(markedUpCreditsNum);
+      if (customerCreditsDebited < minCredits && totalCostUsd > 0) {
+        customerCreditsDebited = minCredits;
+      }
     }
 
     return {
@@ -108,6 +148,8 @@ export class PricingEngine {
       customerCreditsDebited,
       pricingVersion: rates.version,
       modelKey: rates.modelKey,
+      weightClass,
+      tokenWeightMultiplier: weightMultiplier,
     };
   }
 

@@ -15,9 +15,23 @@ export const PLAN_MONTHLY_CREDITS: Record<string, bigint> = {
   starter: 0n,
   basic: 0n,
   standard: 1_000_000n,    // 1 Million Credits
-  premium: 5_000_000n,     // 5 Million Credits
-  enterprise: 40_000_000n, // 40 Million Credits
+  premium: 5_000_000n,     // 5 Million Credits (Legacy)
+  enterprise: 40_000_000n, // 40 Million Credits (Legacy)
 };
+
+export const THREE_PLAN_MONTHLY_CREDITS: Record<string, bigint> = {
+  starter: 0n,
+  basic: 0n,
+  standard: 1_000_000n,    // 1 Million Haiku-token credits
+  premium: 20_000_000n,    // 20 Million Haiku-token credits
+  enterprise: 20_000_000n, // Aliased to Premium unless overrideAllowance is passed
+};
+
+export function getPlanMonthlyCredits(planId: string, threePlanOverride?: boolean): bigint {
+  const threePlan = threePlanOverride ?? (process.env.THREE_PLAN_MODE === 'true');
+  const map = threePlan ? THREE_PLAN_MONTHLY_CREDITS : PLAN_MONTHLY_CREDITS;
+  return map[(planId || 'starter').toLowerCase()] ?? 0n;
+}
 
 export interface SubscriptionSyncPayload {
   collegeId: string;
@@ -26,6 +40,8 @@ export interface SubscriptionSyncPayload {
   periodStart: Date;
   periodEnd: Date;
   reason?: string;
+  overrideAllowance?: bigint;
+  threePlanMode?: boolean;
 }
 
 export interface SubscriptionSyncResult {
@@ -50,9 +66,11 @@ export class SubscriptionSyncService {
    * Guarantees that each college receives exactly one grant per billing cycle.
    */
   public async syncMonthlyPlanGrant(payload: SubscriptionSyncPayload): Promise<SubscriptionSyncResult> {
-    const { collegeId, planId, billingCycle, periodEnd, reason } = payload;
+    const { collegeId, planId, billingCycle, periodEnd, reason, overrideAllowance, threePlanMode } = payload;
     const normalizedPlan = (planId || 'starter').toLowerCase();
-    const monthlyAllowance = PLAN_MONTHLY_CREDITS[normalizedPlan] || 0n;
+    const monthlyAllowance = overrideAllowance !== undefined
+      ? BigInt(overrideAllowance)
+      : getPlanMonthlyCredits(normalizedPlan, threePlanMode);
 
     if (monthlyAllowance <= 0n) {
       logger.info({ collegeId, planId }, 'No AI credit allowance for starter/basic plan');
